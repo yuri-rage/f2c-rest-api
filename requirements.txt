@@ -4,3 +4,4 @@ gcovr==5.0
 matplotlib==3.5.1
 tk==0.1.0
 ortools==9.13.4784
+pytest==8.4.0
