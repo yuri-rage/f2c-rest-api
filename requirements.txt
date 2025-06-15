@@ -3,3 +3,4 @@ uvicorn==0.34.3
 gcovr==5.0
 matplotlib==3.5.1
 tk==0.1.0
+ortools==9.13.4784
