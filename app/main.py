@@ -124,11 +124,14 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     path = reduceSameSegmentPoints(path)
 
     pathLine = path.toLineString()
-    f2c.Visualizer.figure()
-    f2c.Visualizer.plot(cells.getGeometry(0))
-    f2c.Visualizer.plot(cellsToProcess)
-    f2c.Visualizer.plot(path)
-    f2c.Visualizer.save("output.png")
+
+    # gnuplot dependency adds a lot of X11 bloat to a docker image
+    # uncomment this if debug visualization is desired
+    # f2c.Visualizer.figure()
+    # f2c.Visualizer.plot(cells.getGeometry(0))
+    # f2c.Visualizer.plot(cellsToProcess)
+    # f2c.Visualizer.plot(path)
+    # f2c.Visualizer.save("output.png")
 
     print(f"Planned {path.size()} waypoints.")
 
