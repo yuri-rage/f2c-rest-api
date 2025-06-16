@@ -1,5 +1,2 @@
 fastapi==0.115.12
 uvicorn==0.34.3
-# gcovr==5.0
-# matplotlib==3.5.1
-
