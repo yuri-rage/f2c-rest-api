@@ -71,7 +71,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     )
 
     decomposeAngle = data.get("decompose-angle", -1.0)
-    if decomposeAngle >= 0.0:
+    if routeType == RouteGeneratorType.ADVANCED and decomposeAngle >= 0.0:
         decomp = f2c.DECOMP_TrapezoidalDecomp()
         decomp.setSplitAngle(decomposeAngle * math.pi / 180.0)
         cellsToProcess = decomp.decompose(cellsToProcess)
