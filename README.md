@@ -22,6 +22,8 @@ docker run -p 8087:8000 --name f2c yurirage/f2c-rest-api:latest
 docker run -d --restart unless-stopped -p 8087:8000 --name f2c yurirage/f2c-rest-api:latest
 ```
 
+- To confirm the API is running and see version information, open http://localhost:8087 in a web browser.
+
 ## Clone and run locally
 
 If you want to run without Docker, clone the repo and run with Python. You will need a local installation of [Fields2Cover](https://github.com/Fields2Cover/Fields2Cover) built with Python bindings and associated dependencies. Once dependencies are satisfied:
