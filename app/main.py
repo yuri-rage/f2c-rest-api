@@ -8,7 +8,7 @@ import json
 
 app = FastAPI(
     title="Fields2Cover REST API",
-    version="0.1.0-alpha",
+    version="0.1.1-alpha",
     description="A REST API for field coverage path planning using Fields2Cover",
 )
 
@@ -26,10 +26,10 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
         return {"status": "error", "message": "Robot (vehicle) data is required"}
 
     robot.setWidth(robotData.get("width", 1.0))
-    robot.setCovWidth(robotData.get("cov-width", 1.0))
-    minTurningRadius = robotData.get("min-turning-radius", 0.0)
-    robot.setMinTurningRadius(minTurningRadius)
-    robot.setMaxDiffCurv(minTurningRadius / 10.0)
+    robot.setCovWidth(robotData.get("coverageWidth", 1.0))
+    minTurnRadius = robotData.get("minTurnRadius", 0.0)
+    robot.setMinTurningRadius(minTurnRadius)
+    robot.setMaxDiffCurv(minTurnRadius / 10.0)
 
     geometryData = data.get("geometry", {})
     if (
@@ -50,7 +50,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     except (IndexError, TypeError, KeyError) as e:
         return {"status": "error", "message": f"Invalid coordinate data: {str(e)}"}
 
-    headlandDist = data.get("headland-dist", 0.0)
+    headlandDist = data.get("headlandDistance", 0.0)
     cells = f2c.Cells()
     cells.addGeometry(cell)
     headlandGenerator = f2c.HG_Const_gen()
@@ -70,7 +70,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
         else cellsNoHeadlands.getGeometry(0)
     )
 
-    decomposeAngle = data.get("decompose-angle", -1.0)
+    decomposeAngle = data.get("decomposeAngle", -1.0)
     if routeType == RouteGeneratorType.ADVANCED and decomposeAngle >= 0.0:
         decomp = f2c.DECOMP_TrapezoidalDecomp()
         decomp.setSplitAngle(decomposeAngle * math.pi / 180.0)
@@ -94,17 +94,17 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
 
     swathSorter = None
     if routeType == RouteGeneratorType.BOUSTROPHEDON:
-        print("Using boustrophedon route planner.")
+        print("Using Boustrophedon swath sorter.")
         swathSorter = f2c.RP_Boustrophedon()
     elif routeType == RouteGeneratorType.SNAKE:
-        print("Using snake route planner.")
+        print("Using snake swath sorter.")
         swathSorter = f2c.RP_Snake()
     elif routeType == RouteGeneratorType.SPIRAL:
-        print("Using spiral route planner")
+        print("Using spiral swath sorter.")
         numSpirals = data.get("route", {}).get("spirals", 2)
         swathSorter = f2c.RP_Spiral(numSpirals)
 
-    startpoint = data.get("route", {}).get("startpoint", 1)
+    startpoint = data.get("route", {}).get("startPoint", 1)
 
     if swathSorter:
         swaths = swathSorter.genSortedSwaths(swaths, startpoint)
@@ -119,7 +119,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     pathPlanner = f2c.PP_PathPlanning()
     path = pathPlanner.planPath(robot, swaths, dubins)
 
-    minWPDistance = data.get("min-wp-distance", 1.0)
+    minWPDistance = data.get("minWPDistance", 1.0)
     path.reduce(minWPDistance)
     path = reduceSameSegmentPoints(path)
 
@@ -144,7 +144,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
 
 def reverseRoute(route):
     reversed_route = f2c.Route()
-    for i in range(route.sizeVectorSwaths() - 1, -1, -1):
+    for i in range(route.sizeVectorSwaths() - 2, -1, -1):
         reversed_route.addConnection(route.getConnection(i + 1))
         swaths_to_add = route.getSwaths(i).clone()
         swaths_to_add.reverse()
@@ -160,15 +160,20 @@ def reduceSameSegmentPoints(path):
     result = f2c.Path()
     result.addState(path.getState(0))
     for i in range(1, path.size() - 1):
-        prev = path.getState(i - 1)
-        cur = path.getState(i)
-        if cur.angle != prev.angle:
-            # Keep the point before the angle change
-            result.addState(prev)
-            # Keep the point where angle changes
-            result.addState(cur)
+        prev_state = path.getState(i - 1)
+        cur_state = path.getState(i)
+        next_state = path.getState(i + 1)
+        if not angleEquals(cur_state.angle, prev_state.angle) or not angleEquals(
+            cur_state.angle, next_state.angle
+        ):
+            result.addState(cur_state)
     result.addState(path.getState(path.size() - 1))
     return result
+
+
+def angleEquals(angle1, angle2, precision=1e-3):
+    # 1e-3 is ~0.057 degrees
+    return abs(angle1 - angle2) < precision
 
 
 @app.get("/")
