@@ -2,13 +2,12 @@ import fields2cover as f2c
 from fastapi import FastAPI, Body, Request
 from fastapi.responses import RedirectResponse
 from typing import Dict, Any
-from app.models import SwathGeneratorType, RouteGeneratorType
 import math
 import json
 
 app = FastAPI(
     title="Fields2Cover REST API",
-    version="0.1.1-alpha",
+    version="0.1.2-alpha",
     description="A REST API for field coverage path planning using Fields2Cover",
 )
 
@@ -57,49 +56,46 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     cellsNoHeadlands = headlandGenerator.generateHeadlands(cells, headlandDist)
     swathGenerator = f2c.SG_BruteForce()
 
-    swathType = SwathGeneratorType(
-        data.get("swath", {}).get("type", SwathGeneratorType.SWATH_LENGTH)
-    )
-    routeType = RouteGeneratorType(
-        data.get("route", {}).get("type", RouteGeneratorType.BOUSTROPHEDON)
-    )
+    swathType = data.get("swath", {}).get("type", 'NSwath')
+    routeType = data.get("route", {}).get("type", 'Boustrophedon')
 
     cellsToProcess = (
         cellsNoHeadlands
-        if routeType == RouteGeneratorType.ADVANCED
+        if routeType == 'Advanced'
         else cellsNoHeadlands.getGeometry(0)
     )
 
     decomposeAngle = data.get("decomposeAngle", -1.0)
-    if routeType == RouteGeneratorType.ADVANCED and decomposeAngle >= 0.0:
+    if routeType == 'Advanced' and decomposeAngle >= 0.0:
         decomp = f2c.DECOMP_TrapezoidalDecomp()
         decomp.setSplitAngle(decomposeAngle * math.pi / 180.0)
         cellsToProcess = decomp.decompose(cellsToProcess)
 
-    if swathType == SwathGeneratorType.ANGLE:
+    if swathType == 'Angle':
         angle = data["swath"].get("angle", 0) * math.pi / 180.0
         swaths = swathGenerator.generateSwaths(
             angle, robot.getCovWidth(), cellsToProcess
         )
-    elif swathType == SwathGeneratorType.N_SWATH:
-        n_swath_obj = f2c.OBJ_NSwath()
-        swaths = swathGenerator.generateBestSwaths(
-            n_swath_obj, robot.getCovWidth(), cellsToProcess
-        )
-    else:  # SwathGeneratorType.SWATH_LENGTH
+
+    elif swathType == 'SwathLength':
         l_swath_obj = f2c.OBJ_SwathLength()
         swaths = swathGenerator.generateBestSwaths(
             l_swath_obj, robot.getCovWidth(), cellsToProcess
         )
+    else:  # swathType == 'NSwath'
+        n_swath_obj = f2c.OBJ_NSwath()
+        swaths = swathGenerator.generateBestSwaths(
+            n_swath_obj, robot.getCovWidth(), cellsToProcess
+        )
 
     swathSorter = None
-    if routeType == RouteGeneratorType.BOUSTROPHEDON:
+    if routeType == 'Boustrophedon':
         print("Using Boustrophedon swath sorter.")
         swathSorter = f2c.RP_Boustrophedon()
-    elif routeType == RouteGeneratorType.SNAKE:
+    elif routeType == 'Snake':
         print("Using snake swath sorter.")
         swathSorter = f2c.RP_Snake()
-    elif routeType == RouteGeneratorType.SPIRAL:
+    elif routeType == 'Spiral':
         print("Using spiral swath sorter.")
         numSpirals = data.get("route", {}).get("spirals", 2)
         swathSorter = f2c.RP_Spiral(numSpirals)
