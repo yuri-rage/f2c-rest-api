@@ -119,7 +119,7 @@ async def process_field(request: Request, data: Dict[str, Any] = Body(...)):
     pathPlanner = f2c.PP_PathPlanning()
     path = pathPlanner.planPath(robot, swaths, dubins)
 
-    minWPDistance = data.get("minWPDistance", 1.0)
+    minWPDistance = data.get("route", {}).get("minWPDistance", 1.0)
     path.reduce(minWPDistance)
     path = reduceSameSegmentPoints(path)
 
